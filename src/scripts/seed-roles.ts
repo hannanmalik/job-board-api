@@ -2,6 +2,7 @@
 import { DataSource } from 'typeorm';
 import { Role } from '../roles/entities/role.entity';
 import { User } from '../user/entities/user.entity';
+import { Job } from '../job/entities/job.entity';
 const AppDataSource = new DataSource({
   type: 'postgres',
   host: 'localhost',
@@ -9,8 +10,8 @@ const AppDataSource = new DataSource({
   username: 'postgres',
   password: '8998',
   database: 'jobboard_db',
-  entities: [User,Role],
-  synchronize: false,
+  entities: [User,Role,Job],
+  synchronize: true,
 });
 
 async function seedRoles() {

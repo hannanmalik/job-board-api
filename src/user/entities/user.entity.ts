@@ -1,5 +1,6 @@
-import { Entity,PrimaryGeneratedColumn,Column, ManyToOne } from "typeorm";
+import { Entity,PrimaryGeneratedColumn,Column, OneToMany,ManyToOne } from "typeorm";
 import { Role } from "../../roles/entities/role.entity";
+import { Job } from "../../job/entities/job.entity";
 @Entity()
 export class User{
     @PrimaryGeneratedColumn()
@@ -17,4 +18,6 @@ export class User{
     @Column({default:true})
     isActive:boolean;
 
+    @OneToMany(() => Job, (job) => job.createdBy)
+    jobs: Job[];
 }

@@ -8,6 +8,7 @@ import { AuthModule } from './auth/auth.module';
 import { UserModule } from './user/user.module';
 import { User } from './user/entities/user.entity';
 import { Role } from './roles/entities/role.entity';
+import { JobModule } from './job/job.module';
 
 @Module({
   imports: [
@@ -15,6 +16,7 @@ import { Role } from './roles/entities/role.entity';
     TypeOrmModule.forRoot(typeOrmConfig),
     AuthModule,
     UserModule,
+    JobModule,
   ],
   controllers: [AppController],
   providers: [AppService],

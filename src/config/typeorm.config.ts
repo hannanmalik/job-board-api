@@ -2,7 +2,7 @@ import { TypeOrmModuleOptions } from '@nestjs/typeorm';
 import * as dotenv from 'dotenv';
 import { Role } from 'src/roles/entities/role.entity';
 import { User } from 'src/user/entities/user.entity';
-
+import { Job } from 'src/job/entities/job.entity';
 
 dotenv.config();
 
@@ -16,5 +16,5 @@ export const typeOrmConfig:TypeOrmModuleOptions={
     autoLoadEntities:true,
     synchronize:true,
     logging:true,
-    entities:[User,Role]
+    entities:[User,Role,Job]
 };
