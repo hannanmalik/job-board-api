@@ -31,6 +31,8 @@ export class AuthService {
 
     const hashedPassword = await bcrypt.hash(dto.password, 10);
 
+    console.log(role);
+
     const user = this.userRepo.create({
       email: dto.email,
       password: hashedPassword,
