@@ -1,4 +1,4 @@
-import { Body, Controller, Post, UseGuards,Get,Query, Param } from '@nestjs/common';
+import { Body, Controller, Post, UseGuards,Get,Query, Param, Req } from '@nestjs/common';
 import { JobService } from './job.service';
 import { CreateJobDto } from './dto/create-job.dto';
 import { Job } from './entities/job.entity';
@@ -14,8 +14,8 @@ export class JobController {
 
     @Roles('company')
     @Post()
-    async create(@Body() createJobDto:CreateJobDto): Promise<Job>{
-        return await this.jobService.create(createJobDto);
+    async create(@Body() createJobDto:CreateJobDto, @Req() req:any){
+        return await this.jobService.create(createJobDto,req.user);
     }
 
 

@@ -1,4 +1,4 @@
-import {Column,Entity,ManyToOne,PrimaryGeneratedColumn} from 'typeorm';
+import {Column,CreateDateColumn,Entity,ManyToOne,PrimaryGeneratedColumn} from 'typeorm';
 import { User } from '../../user/entities/user.entity';
 
 
@@ -25,6 +25,6 @@ export class Job{
     @ManyToOne(()=>User,(user)=>user.jobs,{eager:true,onDelete:'CASCADE'})
     createdBy:User
 
-    @Column({type:'timestamp',default:()=>'CURRENT_TIMESTAMP'})
+    @CreateDateColumn()
     createdAt:Date;
 }
