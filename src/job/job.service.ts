@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ForbiddenException,
   Injectable,
   InternalServerErrorException,
   NotFoundException,
@@ -10,6 +11,7 @@ import { Repository } from 'typeorm';
 import { CreateJobDto } from './dto/create-job.dto';
 import { FilterJobDto } from './dto/filter-job.dto';
 import { User } from 'src/user/entities/user.entity';
+import { UpdateJobDto } from './dto/update-job-dto';
 
 @Injectable()
 export class JobService {
@@ -23,13 +25,13 @@ export class JobService {
   // CREATE
   async create(createJobDto: CreateJobDto, userObj: User) {
     try {
+      
       if (!userObj || !userObj.id) {
         throw new BadRequestException('Invalid user creating the job');
       }
       const job = this.jobRepository.create({
         ...createJobDto,
         createdBy: userObj,
-        createdAt: new Date(),
       });
 
       const savedJob = await this.jobRepository.save(job);
@@ -37,7 +39,11 @@ export class JobService {
       return {
         success: true,
         message: 'Job created successfully',
-        data: { title: savedJob.title, createdAt: savedJob.createdAt },
+        data: {
+          title: savedJob.title,
+          createdAt: savedJob.createdAt,
+          userId: userObj.id,
+        },
       };
     } catch (error) {
       console.error('Error in create():', error);
@@ -74,7 +80,12 @@ export class JobService {
   //FIND ONE
   async findOne(id: string) {
     try {
-      const job = await this.jobRepository.findOne({ where: { id } });
+      const job = await this.jobRepository
+        .createQueryBuilder('job')
+        .leftJoin('job.createdBy', 'user')
+        .addSelect(['user.id', 'user.email'])
+        .where('job.id = :id', { id })
+        .getOne();
 
       if (!job) {
         throw new NotFoundException(`Job with ID ${id} not found`);
@@ -91,6 +102,140 @@ export class JobService {
       throw new InternalServerErrorException(
         'Something went wrong while fetching the job',
       );
+    }
+  }
+
+  //FIND JOBS FOR A SPECIFIC COMPANY (BY COMPANYID)
+
+  async findByCompany(companyId: number, filterDto: FilterJobDto) {
+    try {
+      
+      const { page = 1, limit = 10, title } = filterDto;
+      if (page < 1 || limit < 1) {
+        throw new BadRequestException(
+          'page and limit must be positive integers',
+        );
+      }
+      const query = this.jobRepository
+        .createQueryBuilder('job')
+        .leftJoin('job.createdBy', 'user')
+        // .addSelect(['user.id', 'user.email'])
+        .where('user.id = :companyId', { companyId });
+
+      if (title) {
+        query.andWhere('job.title ILIKE :title', { title: `%${title}%` });
+      }
+
+      query.skip((page - 1) * limit).take(limit);
+
+      const [jobs, total] = await query.getManyAndCount();
+      return {
+        success: true,
+        message: 'Company Jobs Fetched Successfully',
+        data: jobs,
+        meta: {
+          total,
+          page,
+          limit,
+          totalPage: Math.ceil(total / limit),
+        },
+      };
+    } catch (error) {
+      console.error('JobService.findByCompany error:', error);
+      if (error instanceof BadRequestException) throw error;
+      throw new InternalServerErrorException('Could Not Fetch Company Jobs');
+    }
+  }
+
+  // FIND jobs for current logged-in company
+  async findMyJobs(userObj: User, filterDto: FilterJobDto) {
+    try {
+      
+      if (!userObj || !userObj.id) {
+        throw new BadRequestException('Invalid user');
+      }
+
+      return await this.findByCompany(userObj.id, filterDto);
+    } catch (error) {
+      console.error('JobService.findMyJobs error:', error);
+      if (
+        error instanceof BadRequestException ||
+        error instanceof ForbiddenException
+      )
+        throw error;
+      throw new InternalServerErrorException('Could not fetch your jobs');
+    }
+  }
+
+  async update(id: string, updateDto: UpdateJobDto, userObj: User) {
+    try {
+      const job = await this.jobRepository.findOne({
+        where: { id },
+        relations: ['createdBy'],
+      });
+      const updaetObject = {};
+
+      if (!job) {
+        throw new NotFoundException(`Job with ID ${id} not found`);
+      }
+
+      if (!userObj || job.createdBy.id !== userObj.id) {
+        throw new ForbiddenException('You are not the owner of this job');
+      }
+
+      // Merge update fields — but don't overwrite createdBy/createdAt
+      Object.assign(job, updateDto);
+
+      const updated = await this.jobRepository.save(job);
+      //.update
+      // //affecteD ROw
+      return {
+        success: true,
+        message: 'Job updated successfully',
+        data: updated,
+      };
+    } catch (error) {
+      console.error(`JobService.update(${id}) error:`, error);
+      if (
+        error instanceof NotFoundException ||
+        error instanceof ForbiddenException ||
+        error instanceof BadRequestException
+      )
+        throw error;
+      throw new InternalServerErrorException('Could not update job');
+    }
+  }
+
+  async remove(id: string, userObj: User) {
+    try {
+      const job = await this.jobRepository.findOne({
+        where: { id },
+        relations: ['createdBy'],
+      });
+
+      if (!job) {
+        throw new NotFoundException(`Job with ID ${id} not found`);
+      }
+
+      if (!userObj || job.createdBy.id !== userObj.id) {
+        throw new ForbiddenException('You are not the owner of this job');
+      }
+
+      await this.jobRepository.remove(job);
+
+      return {
+        success: true,
+        message: 'Job deleted successfully',
+        data: { id },
+      };
+    } catch (error) {
+      console.error(`JobService.remove(${id}) error:`, error);
+      if (
+        error instanceof NotFoundException ||
+        error instanceof ForbiddenException
+      )
+        throw error;
+      throw new InternalServerErrorException('Could not delete job');
     }
   }
 }

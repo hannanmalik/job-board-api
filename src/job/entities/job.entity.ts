@@ -22,9 +22,14 @@ export class Job{
     @Column({default:true})
     isActive:boolean;
 
-    @ManyToOne(()=>User,(user)=>user.jobs,{eager:true,onDelete:'CASCADE'})
+    @ManyToOne(()=>User,(user)=>user.jobs,{eager:false,onDelete:'CASCADE'})
     createdBy:User
 
-    @CreateDateColumn()
-    createdAt:Date;
+    @Column()
+    createdAt:Date= new Date();
+
+    @Column()
+    ModifiedAt:Date = new Date();
+
+    
 }
