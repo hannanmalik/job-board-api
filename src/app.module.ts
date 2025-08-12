@@ -9,6 +9,7 @@ import { UserModule } from './user/user.module';
 import { User } from './user/entities/user.entity';
 import { Role } from './roles/entities/role.entity';
 import { JobModule } from './job/job.module';
+import { ApplicationsModule } from './applications/applications.module';
 
 @Module({
   imports: [
@@ -17,6 +18,7 @@ import { JobModule } from './job/job.module';
     AuthModule,
     UserModule,
     JobModule,
+    ApplicationsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

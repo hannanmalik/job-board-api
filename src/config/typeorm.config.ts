@@ -3,6 +3,7 @@ import * as dotenv from 'dotenv';
 import { Role } from 'src/roles/entities/role.entity';
 import { User } from 'src/user/entities/user.entity';
 import { Job } from 'src/job/entities/job.entity';
+import { Application } from 'src/applications/entities/application.entity';
 
 dotenv.config();
 
@@ -16,5 +17,5 @@ export const typeOrmConfig:TypeOrmModuleOptions={
     autoLoadEntities:true,
     synchronize:true,
     logging:true,
-    entities:[User,Role,Job]
+    entities:[User,Role,Job,Application]
 };
