@@ -33,6 +33,7 @@ export class JobService {
       const job = this.jobRepository.create({
         ...createJobDto,
         createdBy: userObj,
+        companyName:userObj.name
       });
 
       const savedJob = await this.jobRepository.save(job);
@@ -41,6 +42,7 @@ export class JobService {
         title: savedJob.title,
         createdAt: savedJob.createdAt,
         userId: userObj.id,
+        companyName:savedJob.companyName
       });
     } catch (error) {
       console.error('Error in create():', error);
@@ -58,10 +60,22 @@ export class JobService {
       this.utils.validatePagination(page, limit);
       const query = this.jobRepository.createQueryBuilder('job');
       if (title) {
-        query.andWhere('job.title ILIKE :title', { title: `%${title}` });
+         query.andWhere(
+        '(job.title ILIKE :search OR job.description ILIKE :search)',
+        { search: `%${title}%` },
+      );
       }
       query.skip((page - 1) * limit).take(limit);
-      return query.getMany();
+       const [jobs, total] = await query.getManyAndCount();
+      return this.utils.success('Company Jobs Fetched Successfully', {
+        jobs,
+        meta: {
+          total,
+          page,
+          limit,
+          totalPage: Math.ceil(total / limit),
+        },
+      });
     } catch (error) {
       console.error('Error in findAll():', error);
       throw new InternalServerErrorException(

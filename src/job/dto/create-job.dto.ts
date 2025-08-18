@@ -16,4 +16,6 @@ export class CreateJobDto{
     @IsString()
     @IsNotEmpty()
     salary:string
+
+
 }

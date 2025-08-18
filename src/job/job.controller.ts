@@ -30,7 +30,7 @@ export class JobController {
   }
 
   @Get()
-  async findAll(@Query() filterDto: FilterJobDto): Promise<Job[]> {
+  async findAll(@Query() filterDto: FilterJobDto){
     return this.jobService.findAll(filterDto);
   }
   @UseGuards(JwtAuthGuard, RolesGuard)

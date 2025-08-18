@@ -11,4 +11,8 @@ export class RegisterDto {
   @IsNotEmpty({ message: 'Role is required' })
   @IsString({ message: 'Role must be a string' })
   role: string;
+
+  @IsNotEmpty({ message: 'Name is required' })
+  @IsString({ message: 'Name must be a string' })
+  name: string;
 }

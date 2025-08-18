@@ -37,6 +37,7 @@ export class AuthService {
       email: dto.email,
       password: hashedPassword,
       role: role, // assigning Role entity, not string
+      name:dto.name
     });
 
     await this.userRepo.save(user);

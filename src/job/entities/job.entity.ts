@@ -26,6 +26,9 @@ export class Job {
   @Column()
   salary: string;
 
+  @Column()
+  companyName: string;
+
   @Column({ default: true })
   isActive: boolean;
 
