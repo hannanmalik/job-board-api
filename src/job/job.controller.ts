@@ -19,11 +19,10 @@ import { RolesGuard } from 'src/auth/guards/roles.guard';
 import { Roles } from 'src/auth/decorators/roles.decorator';
 import { UpdateJobDto } from './dto/update-job-dto';
 
-@UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('job')
 export class JobController {
   constructor(private readonly jobService: JobService) {}
-
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('company')
   @Post()
   async create(@Body() createJobDto: CreateJobDto, @Req() req: any) {
@@ -34,7 +33,7 @@ export class JobController {
   async findAll(@Query() filterDto: FilterJobDto): Promise<Job[]> {
     return this.jobService.findAll(filterDto);
   }
-
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('company')
   @Get('myjobs')
   async findMyJobs(@Req() req: any, @Query() filterDto: FilterJobDto) {
@@ -45,7 +44,7 @@ export class JobController {
   async findOne(@Param('id') id: string) {
     return this.jobService.findOne(id);
   }
-
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Get('company/:companyId')
   async findByCompany(
     @Param('companyId') companyId: string,
@@ -53,7 +52,7 @@ export class JobController {
   ) {
     return this.jobService.findByCompany(Number(companyId), filterDto);
   }
-
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('company')
   @Patch(':id')
   async update(
@@ -63,7 +62,7 @@ export class JobController {
   ) {
     return this.jobService.update(id, dto, req.user);
   }
-
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('company')
   @Delete(':id')
   async remove(@Param('id') id: string, @Req() req: any) {

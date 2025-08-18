@@ -30,4 +30,7 @@ export class User {
 
   @OneToMany(() => Application, (app) => app.candidate)
   applications: Application[];
+
+  @Column({name:'refresh_token_hash',type:'varchar',nullable:true})
+  refreshTokenHash?: string | null;
 }

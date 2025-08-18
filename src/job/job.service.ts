@@ -12,6 +12,7 @@ import { CreateJobDto } from './dto/create-job.dto';
 import { FilterJobDto } from './dto/filter-job.dto';
 import { User } from 'src/user/entities/user.entity';
 import { UpdateJobDto } from './dto/update-job-dto';
+import { UtilsService } from '../utility/utility.service';
 
 @Injectable()
 export class JobService {
@@ -20,12 +21,12 @@ export class JobService {
     private readonly jobRepository: Repository<Job>,
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
+    private readonly utils: UtilsService,
   ) {}
 
   // CREATE
   async create(createJobDto: CreateJobDto, userObj: User) {
     try {
-      
       if (!userObj || !userObj.id) {
         throw new BadRequestException('Invalid user creating the job');
       }
@@ -36,22 +37,14 @@ export class JobService {
 
       const savedJob = await this.jobRepository.save(job);
 
-      return {
-        success: true,
-        message: 'Job created successfully',
-        data: {
-          title: savedJob.title,
-          createdAt: savedJob.createdAt,
-          userId: userObj.id,
-        },
-      };
+      return this.utils.success('Job created Successfully', {
+        title: savedJob.title,
+        createdAt: savedJob.createdAt,
+        userId: userObj.id,
+      });
     } catch (error) {
       console.error('Error in create():', error);
-
-      if (error instanceof BadRequestException) {
-        throw error;
-      }
-
+      if (error instanceof BadRequestException) throw error;
       throw new InternalServerErrorException(
         'Something went wrong while creating the job',
       );
@@ -62,12 +55,12 @@ export class JobService {
   async findAll(filterDto: FilterJobDto) {
     try {
       const { page = 1, limit = 10, title } = filterDto;
+      this.utils.validatePagination(page, limit);
       const query = this.jobRepository.createQueryBuilder('job');
       if (title) {
         query.andWhere('job.title ILIKE :title', { title: `%${title}` });
       }
       query.skip((page - 1) * limit).take(limit);
-
       return query.getMany();
     } catch (error) {
       console.error('Error in findAll():', error);
@@ -87,18 +80,13 @@ export class JobService {
         .where('job.id = :id', { id })
         .getOne();
 
-      if (!job) {
-        throw new NotFoundException(`Job with ID ${id} not found`);
-      }
+      this.utils.ensureExists(job, 'Job');
 
       return job;
     } catch (error) {
       console.error(`Error in findOne(${id}):`, error);
 
-      if (error instanceof NotFoundException) {
-        throw error; // Known error, rethrow
-      }
-
+      if (error instanceof NotFoundException) throw error; // Known error, rethrow
       throw new InternalServerErrorException(
         'Something went wrong while fetching the job',
       );
@@ -109,13 +97,8 @@ export class JobService {
 
   async findByCompany(companyId: number, filterDto: FilterJobDto) {
     try {
-      
       const { page = 1, limit = 10, title } = filterDto;
-      if (page < 1 || limit < 1) {
-        throw new BadRequestException(
-          'page and limit must be positive integers',
-        );
-      }
+      this.utils.validatePagination(page, limit);
       const query = this.jobRepository
         .createQueryBuilder('job')
         .leftJoin('job.createdBy', 'user')
@@ -129,17 +112,15 @@ export class JobService {
       query.skip((page - 1) * limit).take(limit);
 
       const [jobs, total] = await query.getManyAndCount();
-      return {
-        success: true,
-        message: 'Company Jobs Fetched Successfully',
-        data: jobs,
+      return this.utils.success('Company Jobs Fetched Successfully', {
+        jobs,
         meta: {
           total,
           page,
           limit,
           totalPage: Math.ceil(total / limit),
         },
-      };
+      });
     } catch (error) {
       console.error('JobService.findByCompany error:', error);
       if (error instanceof BadRequestException) throw error;
@@ -150,7 +131,6 @@ export class JobService {
   // FIND jobs for current logged-in company
   async findMyJobs(userObj: User, filterDto: FilterJobDto) {
     try {
-      
       if (!userObj || !userObj.id) {
         throw new BadRequestException('Invalid user');
       }
@@ -167,41 +147,45 @@ export class JobService {
     }
   }
 
-  async update(id: string, updateDto: UpdateJobDto, userObj: User) {
+  async update(jobId: string, dto: UpdateJobDto, companyUser: User) {
     try {
+      // 1️⃣ First, ensure the job exists & belongs to the logged-in company user
       const job = await this.jobRepository.findOne({
-        where: { id },
+        where: { id: jobId },
         relations: ['createdBy'],
       });
-      const updaetObject = {};
 
       if (!job) {
-        throw new NotFoundException(`Job with ID ${id} not found`);
+        throw new NotFoundException('Job not found');
       }
 
-      if (!userObj || job.createdBy.id !== userObj.id) {
-        throw new ForbiddenException('You are not the owner of this job');
+      this.utils.ensureOwnerShip(job.createdBy.id, companyUser.id);
+
+      const result = await this.jobRepository.update(
+        { id: jobId },
+        { ...dto, ModifiedAt: new Date() },
+      );
+
+      if (result.affected && result.affected > 0) {
+        // Fetch the updated job for returning
+        const updatedJob = await this.jobRepository.findOne({
+          where: { id: jobId },
+        });
+
+        return this.utils.success('Job updated successfully', updatedJob);
+      } else {
+        return this.utils.failure('No changes were made to the job');
       }
+    } catch (err) {
+      console.error('JobService.update error', err);
 
-      // Merge update fields — but don't overwrite createdBy/createdAt
-      Object.assign(job, updateDto);
-
-      const updated = await this.jobRepository.save(job);
-      //.update
-      // //affecteD ROw
-      return {
-        success: true,
-        message: 'Job updated successfully',
-        data: updated,
-      };
-    } catch (error) {
-      console.error(`JobService.update(${id}) error:`, error);
       if (
-        error instanceof NotFoundException ||
-        error instanceof ForbiddenException ||
-        error instanceof BadRequestException
-      )
-        throw error;
+        err instanceof NotFoundException ||
+        err instanceof ForbiddenException
+      ) {
+        throw err;
+      }
+
       throw new InternalServerErrorException('Could not update job');
     }
   }
@@ -217,17 +201,9 @@ export class JobService {
         throw new NotFoundException(`Job with ID ${id} not found`);
       }
 
-      if (!userObj || job.createdBy.id !== userObj.id) {
-        throw new ForbiddenException('You are not the owner of this job');
-      }
-
+      this.utils.ensureOwnerShip(job.createdBy.id, userObj.id);
       await this.jobRepository.remove(job);
-
-      return {
-        success: true,
-        message: 'Job deleted successfully',
-        data: { id },
-      };
+      return this.utils.success('Job deleted successfully', { id });
     } catch (error) {
       console.error(`JobService.remove(${id}) error:`, error);
       if (

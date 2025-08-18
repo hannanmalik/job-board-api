@@ -60,7 +60,7 @@ export class ApplicationsController {
     @Body() dto: UpdateApplicationStatusDto,
     @Req() req: any,
   ) {
-    const updated = await this.appService.updateStatus(id, dto, req.user);
-    return { success: true, message: 'Application updated', data: updated };
+    return await this.appService.updateStatus(id, dto, req.user);
+
   }
 }

@@ -12,6 +12,7 @@ import { Job } from 'src/job/entities/job.entity';
 import { User } from 'src/user/entities/user.entity';
 import { CreateApplicationDto } from './dto/create-appilcation.dto';
 import { UpdateApplicationStatusDto } from './dto/update-application-status.dto';
+import { UtilsService } from 'src/utility/utility.service';
 
 @Injectable()
 export class ApplicationsService {
@@ -24,6 +25,8 @@ export class ApplicationsService {
 
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
+
+    private readonly utils: UtilsService,
   ) {}
 
   async apply(jobId: string, dto: CreateApplicationDto, candidate: User) {
@@ -35,9 +38,10 @@ export class ApplicationsService {
 
       if (!job?.isActive) throw new NotFoundException('Job not Found!');
 
-      if (job.createdBy && job.createdBy.id === candidate.id) {
-        throw new ForbiddenException('You cannot apply to your own job.');
-      }
+      this.utils.ensureOwnerShip(job.createdBy.id, candidate.id);
+      //   if (job.createdBy && job.createdBy.id === candidate.id) {
+      //     throw new ForbiddenException('You cannot apply to your own job.');
+      //   }
 
       const existing = await this.appRepository.findOne({
         where: { job: { id: jobId }, candidate: { id: candidate.id } },
@@ -54,10 +58,11 @@ export class ApplicationsService {
       });
 
       await this.appRepository.save(appilcation);
-      return {
+      return this.utils.success('Applied Successfully', {
         ...appilcation,
         candidate: undefined,
-      };
+        job: undefined,
+      });
     } catch (error) {
       console.error('ApplicationService.apply error', error);
       if (
@@ -79,11 +84,7 @@ export class ApplicationsService {
     status?: ApplicationStatus,
   ) {
     try {
-      if (page < 1 || limit < 1) {
-        throw new BadRequestException(
-          'page and limit must be positive integers',
-        );
-      }
+      this.utils.validatePagination(page, limit);
 
       const query = this.appRepository
         .createQueryBuilder('application')
@@ -119,17 +120,15 @@ export class ApplicationsService {
 
       const [applications, total] = await query.getManyAndCount();
 
-      return {
-        success: true,
-        message: 'Your applications fetched successfully',
-        data: applications,
+      return this.utils.success('Your applications fetched successfully', {
+        applications,
         meta: {
           total,
           page,
           limit,
           totalPages: Math.ceil(total / limit),
         },
-      };
+      });
     } catch (err) {
       console.error('ApplicationService.findMyApplications error', err);
       if (err instanceof BadRequestException) throw err;
@@ -146,23 +145,27 @@ export class ApplicationsService {
         where: { id: applicationId },
         relations: ['candidate'],
       });
+
       if (!app) throw new NotFoundException('Application not found');
+      this.utils.ensureOwnerShip(app.candidate.id, user.id);
 
-      if (app.candidate.id !== user.id) {
-        throw new ForbiddenException(
-          'You are not the owner of this application',
-        );
-      }
+      //   if (app.candidate.id !== user.id) {
+      //     throw new ForbiddenException(
+      //       'You are not the owner of this application',
+      //     );
+      //   }
 
-      await this.appRepository.update(
+      const result = await this.appRepository.update(
         { id: applicationId },
-        { status: ApplicationStatus.WITHDRAWN },
+        { status: ApplicationStatus.WITHDRAWN, updatedAt: new Date() },
       );
-      return {
-        success: true,
-        message: 'Application withdrawn',
-        data: { id: applicationId, status: ApplicationStatus.WITHDRAWN },
-      };
+      if (result.affected && result.affected > 0) {
+        return this.utils.success('Application withdrawn', {
+          id: applicationId,
+          status: ApplicationStatus.WITHDRAWN,
+        });
+      }
+      return this.utils.failure('No changes made to the application');
     } catch (err) {
       console.error('ApplicationService.withdraw error', err);
       if (err instanceof NotFoundException || err instanceof ForbiddenException)
@@ -180,21 +183,13 @@ export class ApplicationsService {
     status?: ApplicationStatus,
   ) {
     try {
-      if (page < 1 || limit < 1) {
-        throw new BadRequestException(
-          'page and limit must be positive integers',
-        );
-      }
-
+      this.utils.validatePagination(page, limit);
       const job = await this.jobRepository.findOne({
         where: { id: jobId },
         relations: ['createdBy'],
       });
       if (!job) throw new NotFoundException('Job not found');
-
-      if (!job.createdBy || job.createdBy.id !== companyUser.id) {
-        throw new ForbiddenException('You do not own this job');
-      }
+      this.utils.ensureOwnerShip(job.createdBy.id, companyUser.id);
 
       const query = this.appRepository
         .createQueryBuilder('application')
@@ -211,17 +206,15 @@ export class ApplicationsService {
 
       const [applications, total] = await query.getManyAndCount();
 
-      return {
-        success: true,
-        message: 'Applications fetched successfully',
-        data: applications,
+      return this.utils.success('Applications fetched successfully', {
+        applications,
         meta: {
           total,
           page,
           limit,
           totalPages: Math.ceil(total / limit),
         },
-      };
+      });
     } catch (err) {
       console.error('ApplicationService.findApplicationsForJob error', err);
       if (
@@ -248,16 +241,21 @@ export class ApplicationsService {
 
       if (!app) throw new NotFoundException('Application not found');
 
-      // ensure company owns the job
-      if (!app.job.createdBy || app.job.createdBy.id !== companyUser.id) {
-        throw new ForbiddenException('You are not the owner of this job');
+      this.utils.ensureOwnerShip(app.job.createdBy.id, companyUser.id);
+
+      const result = await this.appRepository.update(
+        { id: applicationId },
+        { status: dto.status, updatedAt: new Date() },
+      );
+
+     if (result.affected && result.affected > 0) {
+        return this.utils.success('Application updated', {
+          id: applicationId,
+          status: dto.status,
+        });
       }
 
-      // set status
-      app.status = dto.status;
-      const updated = await this.appRepository.save(app);
-
-      return updated;
+      return this.utils.failure('No changes made');
     } catch (err) {
       console.error('ApplicationService.updateStatus error', err);
       if (err instanceof NotFoundException || err instanceof ForbiddenException)
