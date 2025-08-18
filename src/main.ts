@@ -5,6 +5,13 @@ import cookieParser from 'cookie-parser';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   app.use(cookieParser());
+  app.enableCors({
+    origin: ['http://localhost:3001'], // Next dev
+    credentials: true,
+    allowedHeaders: ['Content-Type', 'Authorization'],
+    methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
+  });
+
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true, // strips any property not in the DTO
@@ -13,9 +20,8 @@ async function bootstrap() {
       transformOptions: {
         enableImplicitConversion: true, // allow implicit type conversion
       },
-    })
+    }),
   );
   await app.listen(process.env.PORT ?? 3000);
-
 }
 bootstrap();
