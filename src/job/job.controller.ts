@@ -33,6 +33,7 @@ export class JobController {
   async findAll(@Query() filterDto: FilterJobDto){
     return this.jobService.findAll(filterDto);
   }
+
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('company')
   @Get('myjobs')
@@ -44,6 +45,7 @@ export class JobController {
   async findOne(@Param('id') id: string) {
     return this.jobService.findOne(id);
   }
+
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Get('company/:companyId')
   async findByCompany(
@@ -52,6 +54,7 @@ export class JobController {
   ) {
     return this.jobService.findByCompany(Number(companyId), filterDto);
   }
+
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('company')
   @Patch(':id')
@@ -62,6 +65,7 @@ export class JobController {
   ) {
     return this.jobService.update(id, dto, req.user);
   }
+  
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('company')
   @Delete(':id')
