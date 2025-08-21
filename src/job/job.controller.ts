@@ -24,7 +24,7 @@ export class JobController {
   constructor(private readonly jobService: JobService) {}
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('company')
-  @Post()
+  @Post("/create")
   async create(@Body() createJobDto: CreateJobDto, @Req() req: any) {
     return await this.jobService.create(createJobDto, req.user);
   }

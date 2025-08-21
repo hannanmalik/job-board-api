@@ -38,10 +38,9 @@ export class ApplicationsService {
 
       if (!job?.isActive) throw new NotFoundException('Job not Found!');
 
-      this.utils.ensureOwnerShip(job.createdBy.id, candidate.id);
-      //   if (job.createdBy && job.createdBy.id === candidate.id) {
-      //     throw new ForbiddenException('You cannot apply to your own job.');
-      //   }
+        if (job.createdBy && job.createdBy.id === candidate.id) {
+          throw new ForbiddenException('You cannot apply to your own job.');
+        }
 
       const existing = await this.appRepository.findOne({
         where: { job: { id: jobId }, candidate: { id: candidate.id } },
@@ -178,8 +177,8 @@ export class ApplicationsService {
   async findApplicationsForJob(
     jobId: string,
     companyUser: User,
-    page = 1,
-    limit = 10,
+    page : number,
+    limit :number,
     status?: ApplicationStatus,
   ) {
     try {
