@@ -12,9 +12,14 @@ import {
 } from '@nestjs/common';
 import express from 'express';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
+import { ConfigService } from '@nestjs/config';
+import ms from 'ms';
 @Controller('auth')
 export class AuthController {
-  constructor(private readonly authService: AuthService) {}
+  constructor(private readonly authService: AuthService,
+        private readonly config: ConfigService,
+    
+  ) {}
 
   @Post('register')
   async register(@Body() registerDto: RegisterDto) {
@@ -32,7 +37,7 @@ export class AuthController {
       httpOnly: true,
       secure: false,
       sameSite: 'strict',
-      maxAge: 1000 * 60 * 15,
+      maxAge: ms(this.config.get<number>('JWT_EXPIRES_IN'))
     });
     return { message: 'Login Successful' };
   }
